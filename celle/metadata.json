@@ -1,0 +1,6 @@
+{
+  "name": "Vai um Café?",
+  "description": "Uma plataforma de acolhimento para mulheres, com a assistente virtual Celle, diário emocional e agendamento de cafés.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
