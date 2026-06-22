@@ -1,15 +1,14 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import { initializeApp, getApps, getApp } from "firebase-admin/app";
+import { initializeApp, getApps, getApp, cert } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 app.use(express.json());
 
 const PORT = 3000;
@@ -267,7 +266,32 @@ function writeDb(data: any) {
   }
 }
 
-// Initialize Firestore Database with custom DB Support
+// Helper to parse private keys securely and handle typical formatting problems on Vercel and deployment environments
+function formatPrivateKey(key: string | undefined): string {
+  if (!key) return "";
+  
+  // First replace literal escape sequences if present
+  let formatted = key.replace(/\\n/g, "\n");
+  
+  // If no newlines exist, and the key contains headers, auto-wrap pieces separated by spaces
+  if (!formatted.includes("\n") && formatted.includes("-----BEGIN PRIVATE KEY-----") && formatted.includes("-----END PRIVATE KEY-----")) {
+    const header = "-----BEGIN PRIVATE KEY-----";
+    const footer = "-----END PRIVATE KEY-----";
+    
+    const startIndex = formatted.indexOf(header) + header.length;
+    const endIndex = formatted.indexOf(footer);
+    
+    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+      const base64Part = formatted.substring(startIndex, endIndex).trim();
+      const chunks = base64Part.split(/\s+/).filter(chunk => chunk.length > 0);
+      formatted = `${header}\n${chunks.join("\n")}\n${footer}\n`;
+    }
+  }
+  
+  return formatted;
+}
+
+// Initialize Firestore Database with custom DB Support and Environment Variables for Vercel
 let dbFirestore: Firestore | null = null;
 
 function getFirestoreDB(): Firestore | null {
@@ -275,28 +299,51 @@ function getFirestoreDB(): Firestore | null {
   
   try {
     const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      if (getApps().length === 0) {
-        initializeApp({
-          projectId: config.projectId,
-        });
+    let projectId = process.env.FIREBASE_PROJECT_ID;
+    let databaseId = process.env.FIREBASE_DATABASE_ID;
+    let clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    // Load from JSON config file if environment variables are not fully specified
+    if (!projectId && fs.existsSync(configPath)) {
+      try {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        projectId = config.projectId;
+        if (!databaseId) {
+          databaseId = config.firestoreDatabaseId;
+        }
+      } catch (fileErr) {
+        console.warn("[Firebase Config] Failed to parse firebase-applet-config.json:", fileErr);
       }
-      
-      const appInstance = getApp();
-      if (config.firestoreDatabaseId) {
-        dbFirestore = getFirestore(appInstance, config.firestoreDatabaseId);
-        console.log(`Firebase Admin initialized successfully with custom config. Database ID: ${config.firestoreDatabaseId}`);
+    }
+
+    if (getApps().length === 0) {
+      if (projectId) {
+        const options: any = { projectId };
+        if (clientEmail && privateKey) {
+          options.credential = cert({
+            projectId,
+            clientEmail,
+            privateKey: formatPrivateKey(privateKey),
+          });
+          console.log("[Firebase Admin] Initializing via explicit Service Account Credentials from environment.");
+        } else {
+          console.log("[Firebase Admin] Initializing with Project ID from environment/config file under container environment.");
+        }
+        initializeApp(options);
       } else {
-        dbFirestore = getFirestore(appInstance);
-        console.log("Firebase Admin initialized successfully with standard (default) database.");
-      }
-    } else {
-      console.warn("firebase-applet-config.json not found, attempting default GCP initialization.");
-      if (getApps().length === 0) {
+        console.warn("[Firebase Admin] No custom Firebase configuration found in environment or config file. Initializing with fallback Application Default Credentials.");
         initializeApp();
       }
-      dbFirestore = getFirestore();
+    }
+
+    const appInstance = getApp();
+    if (databaseId) {
+      dbFirestore = getFirestore(appInstance, databaseId);
+      console.log(`[Firebase Firestore] Loaded database instance successfully. Database ID: ${databaseId}`);
+    } else {
+      dbFirestore = getFirestore(appInstance);
+      console.log("[Firebase Firestore] Loaded default database instance successfully.");
     }
   } catch (error) {
     console.error("Failed to initialize Firebase Admin SDK:", error);
@@ -1064,6 +1111,7 @@ app.post("/api/whatsapp/send", async (req, res) => {
 // Configure Vite middleware in developmental server
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa"
@@ -1085,4 +1133,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
