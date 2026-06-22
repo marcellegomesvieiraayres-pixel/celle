@@ -1,0 +1,142 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered user profile information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "email": { "type": "string" },
+        "dataNascimento": { "type": "string" },
+        "cidade": { "type": "string" },
+        "estado": { "type": "string" },
+        "profissao": { "type": "string" },
+        "estadoCivil": { "type": "string" },
+        "filhos": { "type": "boolean" },
+        "interesses": { "type": "array" },
+        "comoConheceu": { "type": "string" },
+        "aceiteLgpd": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["nome", "email"]
+    },
+    "MessageMetadata": {
+      "title": "MessageMetadata",
+      "description": "Extracted emotional metadata from user message",
+      "type": "object",
+      "properties": {
+        "humor": { "type": "integer" },
+        "energia": { "type": "integer" },
+        "ansiedade": { "type": "integer" },
+        "estresse": { "type": "integer" },
+        "qualidade_do_sono": { "type": "integer" },
+        "tema_principal": { "type": "string" },
+        "tema_secundario": { "type": "string" },
+        "sentimento_predominante": { "type": "string" },
+        "interesse_em_cafe": { "type": "boolean" },
+        "interesse_em_terapia": { "type": "boolean" },
+        "interesse_em_grupo": { "type": "boolean" },
+        "data_hora": { "type": "string" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat log between user and Celle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "usuarioId": { "type": "string" },
+        "sender": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "metadata": { "type": "object", "$ref": "#/entities/MessageMetadata" }
+      },
+      "required": ["usuarioId", "sender", "text", "timestamp"]
+    },
+    "Agendamento": {
+      "title": "Agendamento",
+      "description": "Scheduled appointments/activities",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "usuarioId": { "type": "string" },
+        "usuarioNome": { "type": "string" },
+        "data": { "type": "string" },
+        "hora": { "type": "string" },
+        "tipo": { "type": "string" },
+        "observacoes": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["usuarioId", "data", "hora", "tipo", "status"]
+    },
+    "SessaoAiGenerated": {
+      "title": "SessaoAiGenerated",
+      "description": "AI analysis of therapeutic session",
+      "type": "object",
+      "properties": {
+        "resumoClinico": { "type": "string" },
+        "evolucaoClinica": { "type": "string" },
+        "possiveisTemasAprofundamento": { "type": "array" },
+        "resumoSimplificadoPaciente": { "type": "string" },
+        "sugestoesAutocuidado": { "type": "array" }
+      }
+    },
+    "Sessao": {
+      "title": "Sessao",
+      "description": "Therapeutic Session Record (Marcelle clinical notes)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "usuarioId": { "type": "string" },
+        "usuarioNome": { "type": "string" },
+        "data": { "type": "string" },
+        "resumoSessao": { "type": "string" },
+        "observacoesClinicas": { "type": "string" },
+        "hipotesesClinicas": { "type": "string" },
+        "planoTerapeutico": { "type": "string" },
+        "aiGenerated": { "type": "object", "$ref": "#/entities/SessaoAiGenerated" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["usuarioId", "data", "resumoSessao"]
+    },
+    "WhatsappLog": {
+      "title": "WhatsappLog",
+      "description": "Logged dynamic simulated WhatsApp exchanges",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "phone": { "type": "string" },
+        "name": { "type": "string" },
+        "direction": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "type": { "type": "string" }
+      },
+      "required": ["phone", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Collection of users"
+    },
+    "messages": {
+      "schema": "Message",
+      "description": "Collection of chat messages with emotional metadata"
+    },
+    "agendamentos": {
+      "schema": "Agendamento",
+      "description": "Collection of appointments/schedulings"
+    },
+    "sessoes": {
+      "schema": "Sessao",
+      "description": "Collection of therapeutic clinical session records"
+    },
+    "whatsappLogs": {
+      "schema": "WhatsappLog",
+      "description": "Collection of simulated WhatsApp conversation logs"
+    }
+  }
+}
